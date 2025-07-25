@@ -28,7 +28,7 @@ class LinkKFGUI:
     def __init__(self) -> None:
         """Initialize the GUI application."""
         self.root = tk.Tk()
-        self.root.title("🎬 Linkkf 다운로더 v1.0")
+        self.root.title("🎬 Linkkf 다운로더 v1.0 By noName_Come")
         self.root.geometry("950x900")  # 기본 크기 (세로 850→900)
         self.root.minsize(750, 800)    # 최소 크기 (세로 750→800)
         
