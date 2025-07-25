@@ -4,7 +4,7 @@ animation downloader, linkkf_downloader
 <img width="952" height="932" alt="image" src="https://github.com/user-attachments/assets/341054df-b27a-469b-a24f-22f496e7bce3" />
 
 
-# 🎬 LinkKF 비디오 다운로더
+# 🎬 LinkKF 애니 다운로더
 kr.linkkf.net 사이트에서 비디오를 다운로드하는 GUI 다운로더입니다.
 
 ## 🚀 사용법
