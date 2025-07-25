@@ -40,8 +40,3 @@ https://kr.linkkf.net/player/v401148-sub-2/
 - ✅ 이미지 기반 스트림 지원
 - ✅ 자막 파일 추출
 - ✅ 실시간 진행률 표시
-
-## 🛠️ 문제 해결
-1. **Python 없음**: https://www.python.org/downloads/ 파이썬 설치
-2. **FFmpeg 없음**: https://ffmpeg.org 에서 다운로드
-3. **다운로드 실패**: URL 형식 확인
