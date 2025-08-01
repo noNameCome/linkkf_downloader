@@ -117,22 +117,24 @@ class LinkKFDownloader:
             
             if not player_script:
                 print("❌ Could not find player_post in JavaScript")
-                return None
+                print("🔍 Trying alternative extraction methods...")
+                # Don't return None here, continue with fallback methods
             
             # Extract iframe URL using the reference script method
             iframe_url = None
             
             # Look for player_post variable (reference script approach)
-            try:
-                # Find the pattern: player_post = "URL"
-                click_pos = player_script.find('.click')
-                if click_pos != -1:
-                    player_post_start = player_script.find('player_post', click_pos) + 13
-                    player_post_end = player_script.find(',', player_post_start) - 1
-                    iframe_url = player_script[player_post_start:player_post_end].strip('"\'')
-                    print(f"✅ Extracted iframe URL via player_post: {iframe_url}")
-            except Exception as e:
-                print(f"⚠️  player_post extraction failed: {e}")
+            if player_script:  # Only try if we found player_post
+                try:
+                    # Find the pattern: player_post = "URL"
+                    click_pos = player_script.find('.click')
+                    if click_pos != -1:
+                        player_post_start = player_script.find('player_post', click_pos) + 13
+                        player_post_end = player_script.find(',', player_post_start) - 1
+                        iframe_url = player_script[player_post_start:player_post_end].strip('"\'')
+                        print(f"✅ Extracted iframe URL via player_post: {iframe_url}")
+                except Exception as e:
+                    print(f"⚠️  player_post extraction failed: {e}")
             
             # Fallback: Look for iframe elements if player_post method failed
             if not iframe_url:
@@ -868,7 +870,7 @@ class LinkKFDownloader:
                     '-safe', '0',
                     '-i', str(concat_file_path),
                     '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',  # 720p instead of 1080p
-                    '-r', '25',  # 25 FPS instead of 30
+                    '-r', '30',  # FPS 30
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',  # Much faster encoding
                     '-crf', '28',  # Slightly lower quality for speed
@@ -879,7 +881,7 @@ class LinkKFDownloader:
                 ]
                 
                 print(f"🎬 Running ffmpeg to convert images to video...")
-                print(f"🎬 Optimized for speed: 720p, 25fps, ultrafast preset")
+                print(f"🎬 Optimized for speed: 720p, 30fps, ultrafast preset")
                 print(f"🎬 Working directory: {temp_dir}")
                 
                 # Hide window on Windows
