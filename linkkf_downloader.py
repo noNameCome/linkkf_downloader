@@ -353,6 +353,62 @@ class LinkKFDownloader:
                         f'https://m3k.myani.app/b2k37/m3u8/{player_data_url}.m3u8'
                     ])
                 
+                # Cross-pattern matching: if 'n' pattern fails, try 's' pattern
+                if player_data_url.endswith(('n1', 'n2', 'n3', 'n4', 'n5', 'n6')):
+                    # Convert 401801n2 -> 401801s2, 401801t2
+                    s_pattern = player_data_url[:-2] + 's' + player_data_url[-1]
+                    t_pattern = player_data_url[:-2] + 't' + player_data_url[-1]
+                    possible_patterns.extend([
+                        # 's' patterns
+                        f'https://m3k.myani.app/b2nss4/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2k37/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2k28/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2/m3u8/{s_pattern}.m3u8',
+                        f'https://g2.myani.app/hls/{s_pattern}/index.m3u8',
+                        f'https://bi1.imgkr2.top/file/ns2bb4/{s_pattern}/index.m3u8',
+                        f'https://bi2.imgkr2.top/file/ns2bb4/{s_pattern}/index.m3u8',
+                        # 't' patterns (new!)
+                        f'https://bn1.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://bn2.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://bn3.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://play.sub3.top/hls/{t_pattern}/index.m3u8',
+                        f'https://play.sub3.top/stream/{t_pattern}/index.m3u8',
+                    ])
+                elif player_data_url.endswith(('s1', 's2', 's3', 's4', 's5', 's6')):
+                    # Convert 401801s2 -> 401801n2, 401801t2
+                    n_pattern = player_data_url[:-2] + 'n' + player_data_url[-1]
+                    t_pattern = player_data_url[:-2] + 't' + player_data_url[-1]
+                    possible_patterns.extend([
+                        # 'n' patterns
+                        f'https://bn1.imgkr4.top/file/k0625n1/{n_pattern}/index.m3u8',
+                        f'https://play.sub3.top/hls/{n_pattern}/index.m3u8',
+                        f'https://play.sub3.top/stream/{n_pattern}/index.m3u8',
+                        # 't' patterns (new!)
+                        f'https://bn1.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://bn2.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://bn3.imgkr4.top/file/k0625n1/{t_pattern}/index.m3u8',
+                        f'https://play.sub3.top/hls/{t_pattern}/index.m3u8',
+                        f'https://play.sub3.top/stream/{t_pattern}/index.m3u8',
+                    ])
+                elif player_data_url.endswith(('t1', 't2', 't3', 't4', 't5', 't6')):
+                    # Convert 401801t2 -> 401801n2, 401801s2 (new!)
+                    n_pattern = player_data_url[:-2] + 'n' + player_data_url[-1]
+                    s_pattern = player_data_url[:-2] + 's' + player_data_url[-1]
+                    possible_patterns.extend([
+                        # 'n' patterns
+                        f'https://bn1.imgkr4.top/file/k0625n1/{n_pattern}/index.m3u8',
+                        f'https://play.sub3.top/hls/{n_pattern}/index.m3u8',
+                        f'https://play.sub3.top/stream/{n_pattern}/index.m3u8',
+                        # 's' patterns
+                        f'https://m3k.myani.app/b2nss4/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2k37/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2k28/m3u8/{s_pattern}.m3u8',
+                        f'https://m3k.myani.app/b2/m3u8/{s_pattern}.m3u8',
+                        f'https://g2.myani.app/hls/{s_pattern}/index.m3u8',
+                        f'https://bi1.imgkr2.top/file/ns2bb4/{s_pattern}/index.m3u8',
+                        f'https://bi2.imgkr2.top/file/ns2bb4/{s_pattern}/index.m3u8',
+                    ])
+                
                 print(f"🔍 Testing {len(possible_patterns)} possible M3U8 URLs...")
                 for test_url in possible_patterns:
                     try:
@@ -465,6 +521,70 @@ class LinkKFDownloader:
                 
                 # Test each possible subtitle URL
                 for test_sub_url in possible_subtitle_urls:
+                    try:
+                        print(f"   Testing subtitle: {test_sub_url}")
+                        sub_headers = {
+                            'Referer': iframe_url,
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                        
+                        # Quick test to see if subtitle exists
+                        sub_response = self.session.head(test_sub_url, headers=sub_headers, timeout=10)
+                        if sub_response.status_code == 200:
+                            subtitle_url = test_sub_url
+                            print(f"✅ Found subtitle URL: {subtitle_url}")
+                            break
+                    except Exception as e:
+                        print(f"     Subtitle test failed: {e}")
+                        continue
+            
+            # If no direct subtitle found, try to construct subtitle URL
+            if not subtitle_url:
+                print("🔍 Trying to construct subtitle URL...")
+                
+                # Determine subtitle server based on iframe domain and player_data pattern
+                subtitle_patterns = []
+                
+                if 'sub3.top' in iframe_domain:
+                    # For sub3.top iframe domain, try sub2.top patterns
+                    subtitle_patterns.extend([
+                        f'https://2.sub2.top/s/{player_data_url}.vtt',
+                        f'https://1.sub2.top/s/{player_data_url}.vtt',
+                        f'https://sub2.top/s/{player_data_url}.vtt',
+                    ])
+                elif 'myani.app' in iframe_domain:
+                    # For myani.app iframe domain, try sub1.top patterns
+                    subtitle_patterns.extend([
+                        f'https://k1.sub1.top/s/{player_data_url}.vtt',
+                        f'https://k2.sub1.top/s/{player_data_url}.vtt',
+                        f'https://sub1.top/s/{player_data_url}.vtt',
+                    ])
+                
+                # Add cross-pattern subtitle matching for n/s/t patterns
+                if player_data_url.endswith(('n1', 'n2', 'n3', 'n4', 'n5', 'n6')):
+                    s_pattern = player_data_url[:-2] + 's' + player_data_url[-1]
+                    t_pattern = player_data_url[:-2] + 't' + player_data_url[-1]
+                    subtitle_patterns.extend([
+                        f'https://k1.sub1.top/s/{s_pattern}.vtt',
+                        f'https://2.sub2.top/s/{t_pattern}.vtt',
+                    ])
+                elif player_data_url.endswith(('s1', 's2', 's3', 's4', 's5', 's6')):
+                    n_pattern = player_data_url[:-2] + 'n' + player_data_url[-1]
+                    t_pattern = player_data_url[:-2] + 't' + player_data_url[-1]
+                    subtitle_patterns.extend([
+                        f'https://2.sub2.top/s/{n_pattern}.vtt',
+                        f'https://2.sub2.top/s/{t_pattern}.vtt',
+                    ])
+                elif player_data_url.endswith(('t1', 't2', 't3', 't4', 't5', 't6')):
+                    n_pattern = player_data_url[:-2] + 'n' + player_data_url[-1]
+                    s_pattern = player_data_url[:-2] + 's' + player_data_url[-1]
+                    subtitle_patterns.extend([
+                        f'https://2.sub2.top/s/{n_pattern}.vtt',
+                        f'https://k1.sub1.top/s/{s_pattern}.vtt',
+                    ])
+            
+                # Test each possible subtitle URL
+                for test_sub_url in subtitle_patterns:
                     try:
                         print(f"   Testing subtitle: {test_sub_url}")
                         sub_headers = {
