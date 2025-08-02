@@ -433,6 +433,55 @@ class LinkKFDownloader:
             except Exception as e:
                 print(f"⚠️  Subtitle extraction failed: {e}")
             
+            # Enhanced subtitle fallback - construct subtitle URL from player_data_url
+            if not subtitle_url and player_data_url:
+                print("🔍 Trying to construct subtitle URL...")
+                
+                # Common subtitle URL patterns based on different iframe domains
+                possible_subtitle_urls = []
+                
+                if 'myani.app' in iframe_domain:
+                    possible_subtitle_urls = [
+                        f'https://k1.sub1.top/s/{player_data_url}.vtt',
+                        f'https://k2.sub1.top/s/{player_data_url}.vtt',
+                        f'https://sub1.top/s/{player_data_url}.vtt'
+                    ]
+                elif 'sub3.top' in iframe_domain:
+                    possible_subtitle_urls = [
+                        f'https://2.sub2.top/s/{player_data_url}.vtt',
+                        f'https://1.sub2.top/s/{player_data_url}.vtt',
+                        f'https://sub2.top/s/{player_data_url}.vtt',
+                        f'https://k1.sub1.top/s/{player_data_url}.vtt'
+                    ]
+                else:
+                    # Generic fallback
+                    possible_subtitle_urls = [
+                        f'https://k1.sub1.top/s/{player_data_url}.vtt',
+                        f'https://2.sub2.top/s/{player_data_url}.vtt',
+                        f'https://1.sub2.top/s/{player_data_url}.vtt',
+                        f'https://sub1.top/s/{player_data_url}.vtt',
+                        f'https://sub2.top/s/{player_data_url}.vtt'
+                    ]
+                
+                # Test each possible subtitle URL
+                for test_sub_url in possible_subtitle_urls:
+                    try:
+                        print(f"   Testing subtitle: {test_sub_url}")
+                        sub_headers = {
+                            'Referer': iframe_url,
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                        
+                        # Quick test to see if subtitle exists
+                        sub_response = self.session.head(test_sub_url, headers=sub_headers, timeout=10)
+                        if sub_response.status_code == 200:
+                            subtitle_url = test_sub_url
+                            print(f"✅ Found subtitle URL: {subtitle_url}")
+                            break
+                    except Exception as e:
+                        print(f"     Subtitle test failed: {e}")
+                        continue
+            
             video_info = {
                 'url': url,
                 'video_id': video_id,
