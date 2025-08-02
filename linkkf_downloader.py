@@ -147,8 +147,88 @@ class LinkKFDownloader:
                         print(f"✅ Found iframe URL: {iframe_url}")
                         break
             
+            # Enhanced fallback: Look for different JavaScript patterns
+            if not iframe_url:
+                print("🔍 Enhanced fallback: Searching for alternative JavaScript patterns...")
+                for script in scripts:
+                    if script.string:
+                        # Look for various iframe URL patterns
+                        iframe_patterns = [
+                            r'["\']([^"\']*(?:myani\.app|sub3\.top|\.php)[^"\']*)["\']',
+                            r'src\s*[:=]\s*["\']([^"\']*(?:myani\.app|sub3\.top)[^"\']*)["\']',
+                            r'url\s*[:=]\s*["\']([^"\']*(?:myani\.app|sub3\.top)[^"\']*)["\']'
+                        ]
+                        
+                        for pattern in iframe_patterns:
+                            matches = re.findall(pattern, script.string)
+                            for match in matches:
+                                if 'myani.app' in match or 'sub3.top' in match or '.php' in match:
+                                    iframe_url = match
+                                    print(f"✅ Found iframe URL via JavaScript pattern: {iframe_url}")
+                                    break
+                            if iframe_url:
+                                break
+                    if iframe_url:
+                        break
+            
+            # Final fallback: Try to construct iframe URL based on video ID patterns
+            if not iframe_url:
+                print("🔧 Final fallback: Attempting to construct iframe URL...")
+                
+                # Common iframe URL patterns observed
+                possible_iframe_urls = [
+                    f'https://play.sub3.top/b2/kn1.php?url={video_id}n{sub_id}&id',
+                    f'https://g2.myani.app/player.php?url={video_id}s{sub_id}',
+                    f'https://play.sub3.top/player.php?url={video_id}s{sub_id}',
+                    f'https://play.sub3.top/b2/kn1.php?url={video_id}s{sub_id}&id',
+                    f'https://g2.myani.app/b2/kn1.php?url={video_id}n{sub_id}&id'
+                ]
+                
+                for test_iframe_url in possible_iframe_urls:
+                    try:
+                        print(f"   Testing constructed URL: {test_iframe_url}")
+                        test_headers = {
+                            'Referer': url,
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                        
+                        # Quick test to see if the URL responds
+                        test_response = self.session.head(test_iframe_url, headers=test_headers, timeout=10)
+                        if test_response.status_code == 200:
+                            iframe_url = test_iframe_url
+                            print(f"✅ Constructed iframe URL works: {iframe_url}")
+                            break
+                        elif test_response.status_code in [301, 302]:
+                            redirect_url = test_response.headers.get('Location')
+                            if redirect_url:
+                                iframe_url = redirect_url
+                                print(f"✅ Found iframe URL via redirect: {iframe_url}")
+                                break
+                    except Exception as e:
+                        print(f"     Failed: {e}")
+                        continue
+            
             if not iframe_url:
                 print("❌ Could not find iframe URL")
+                
+                # Enhanced debugging: Show what we actually found
+                print("🔍 Debug: Page analysis results:")
+                print(f"   📝 Page title: {title}")
+                print(f"   📊 Total scripts found: {len(scripts)}")
+                print(f"   📊 Total iframes found: {len(soup.find_all('iframe'))}")
+                
+                # Show a sample of the page content for debugging
+                print("🔍 Debug: Sample page content (first 500 chars):")
+                print(f"   {response.text[:500]}...")
+                
+                # Check if page is blocked or redirected
+                if "cloudflare" in response.text.lower() or "access denied" in response.text.lower():
+                    print("⚠️  Page might be blocked by CloudFlare or access control")
+                elif "404" in response.text or "not found" in response.text.lower():
+                    print("⚠️  Page might be returning 404 or not found")
+                elif len(response.text) < 1000:
+                    print("⚠️  Page content is unusually short - might be an error page")
+                
                 return None
             
             # Extract player_data_url from iframe URL
@@ -244,16 +324,33 @@ class LinkKFDownloader:
                         f'https://g2.myani.app/stream/{player_data_url}/index.m3u8'
                     ])
                 elif 'sub3.top' in iframe_domain:
-                    # Sub3.top patterns
+                    # Sub3.top patterns with more variations
+                    # Try both 'n' and 's' patterns since different regions might use different patterns
+                    base_id = player_data_url[:-2] if player_data_url.endswith(('n1', 's1', 'n2', 's2')) else player_data_url
+                    
                     possible_patterns.extend([
                         f'https://bn1.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
-                        f'https://play.sub3.top/hls/{player_data_url}/index.m3u8'
+                        f'https://bn2.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
+                        f'https://bn3.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
+                        f'https://play.sub3.top/hls/{player_data_url}/index.m3u8',
+                        f'https://play.sub3.top/stream/{player_data_url}/index.m3u8',
+                        f'https://sub3.top/hls/{player_data_url}/index.m3u8',
+                        f'https://m3k.myani.app/b2nss4/m3u8/{player_data_url}.m3u8',
+                        f'https://g2.myani.app/hls/{player_data_url}/index.m3u8',
+                        # Try alternative patterns (n->s, s->n conversion)
+                        f'https://m3k.myani.app/b2nss4/m3u8/{base_id}s1.m3u8' if 'n1' in player_data_url else f'https://m3k.myani.app/b2nss4/m3u8/{base_id}n1.m3u8',
+                        f'https://bn1.imgkr4.top/file/k0625n1/{base_id}s1/index.m3u8' if 'n1' in player_data_url else f'https://bn1.imgkr4.top/file/k0625n1/{base_id}n1/index.m3u8'
                     ])
                 else:
-                    # Generic fallback patterns
+                    # Generic fallback patterns with more options
                     possible_patterns.extend([
                         f'https://m3k.myani.app/b2nss4/m3u8/{player_data_url}.m3u8',
-                        f'https://bn1.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8'
+                        f'https://bn1.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
+                        f'https://bn2.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
+                        f'https://bn3.imgkr4.top/file/k0625n1/{player_data_url}/index.m3u8',
+                        f'https://play.sub3.top/hls/{player_data_url}/index.m3u8',
+                        f'https://g2.myani.app/hls/{player_data_url}/index.m3u8',
+                        f'https://m3k.myani.app/b2k37/m3u8/{player_data_url}.m3u8'
                     ])
                 
                 print(f"🔍 Testing {len(possible_patterns)} possible M3U8 URLs...")
@@ -276,6 +373,18 @@ class LinkKFDownloader:
                             redirect_url = test_response.headers.get('Location')
                             if redirect_url:
                                 print(f"     Following redirect: {redirect_url}")
+                                
+                                # Validate redirect URL - reject invalid domains
+                                invalid_domains = ['google.com', 'microsoft.com', 'amazon.com', 'cloudflare.com']
+                                if any(domain in redirect_url.lower() for domain in invalid_domains):
+                                    print(f"     ❌ Invalid redirect to: {redirect_url}")
+                                    continue
+                                
+                                # Check if redirect URL looks like a valid M3U8 URL
+                                if not ('.m3u8' in redirect_url or 'myani.app' in redirect_url or 'imgkr' in redirect_url):
+                                    print(f"     ❌ Redirect doesn't look like M3U8: {redirect_url}")
+                                    continue
+                                
                                 redirect_response = self.session.head(redirect_url, timeout=10, headers=test_headers)
                                 if redirect_response.status_code == 200:
                                     m3u8_url = redirect_url
@@ -745,6 +854,20 @@ class LinkKFDownloader:
         try:
             import subprocess
             
+            # Check for local ffmpeg.exe first, then current directory, then system PATH
+            local_ffmpeg = Path(__file__).parent / "ffmpeg.exe"
+            cwd_ffmpeg = Path.cwd() / "ffmpeg.exe"
+            
+            if local_ffmpeg.exists():
+                ffmpeg_cmd = str(local_ffmpeg)
+                print(f"🎬 Using script directory FFmpeg: {ffmpeg_cmd}")
+            elif cwd_ffmpeg.exists():
+                ffmpeg_cmd = str(cwd_ffmpeg)
+                print(f"🎬 Using current directory FFmpeg: {ffmpeg_cmd}")
+            else:
+                ffmpeg_cmd = 'ffmpeg'
+                print(f"🎬 Using system FFmpeg")
+            
             # Create file list for ffmpeg
             file_list_path = self.output_dir / "filelist.txt"
             
@@ -756,7 +879,7 @@ class LinkKFDownloader:
             
             # Run ffmpeg to merge segments with speed optimization
             cmd = [
-                'ffmpeg',
+                ffmpeg_cmd,  # Use determined ffmpeg command
                 '-f', 'concat',
                 '-safe', '0',
                 '-i', str(file_list_path),
@@ -831,6 +954,20 @@ class LinkKFDownloader:
             
             print(f"🖼️  Converting {len(image_files)} images to video...")
             
+            # Check for local ffmpeg.exe first, then current directory, then system PATH
+            local_ffmpeg = Path(__file__).parent / "ffmpeg.exe"
+            cwd_ffmpeg = Path.cwd() / "ffmpeg.exe"
+            
+            if local_ffmpeg.exists():
+                ffmpeg_cmd = str(local_ffmpeg)
+                print(f"🎬 Using script directory FFmpeg: {ffmpeg_cmd}")
+            elif cwd_ffmpeg.exists():
+                ffmpeg_cmd = str(cwd_ffmpeg)
+                print(f"🎬 Using current directory FFmpeg: {ffmpeg_cmd}")
+            else:
+                ffmpeg_cmd = 'ffmpeg'
+                print(f"🎬 Using system FFmpeg")
+            
             # Create a safe temporary directory in the system temp folder to avoid path issues
             import tempfile
             with tempfile.TemporaryDirectory(prefix="linkkf_") as temp_dir_path:
@@ -865,19 +1002,19 @@ class LinkKFDownloader:
                 
                 # Run ffmpeg to create video from images with optimized speed settings
                 cmd = [
-                    'ffmpeg',
+                    ffmpeg_cmd,  # Use determined ffmpeg command
                     '-f', 'concat',
                     '-safe', '0',
                     '-i', str(concat_file_path),
                     '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',  # 720p instead of 1080p
-                    '-r', '30',  # FPS 30
+                    '-r', '30',  # 30 FPS for smooth playback
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',  # Much faster encoding
                     '-crf', '28',  # Slightly lower quality for speed
                     '-pix_fmt', 'yuv420p',
                     '-threads', '0',  # Use all available CPU cores
                     '-y',  # Overwrite output file
-                    output_file
+                    str(Path(output_file).absolute())  # Use absolute path for output
                 ]
                 
                 print(f"🎬 Running ffmpeg to convert images to video...")
@@ -981,9 +1118,12 @@ class LinkKFDownloader:
         if not video_info:
             return False
         
-        # Set output file path
+        # Set output file path and ensure directory exists
         output_file = self.output_dir / video_info['filename']
         
+        # Create output directory if it doesn't exist
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        print(f"📁 Output directory: {output_file.parent}")
         print(f"💾 Output file: {output_file}")
         
         # Download video
