@@ -40,3 +40,14 @@ https://kr.linkkf.net/player/v401148-sub-2/
 1. **Python 없음**: https://www.python.org/downloads/ 파이썬 설치
 2. **FFmpeg 없음**: https://ffmpeg.org 에서 다운로드
 3. **다운로드 실패**: URL 형식 확인
+
+
+혹시 다운 안되시는분들 ↓↓↓↓↓↓
+
+모든 컴퓨터마다  다운받는 url 형식이 다양하게 있네요... 
+최대한 수정 하고 있긴 한데 제가 가지고 있는 컴퓨터 한계가 있어서.... 
+github issue 에 업로 해주거나 , 아카라이브 제가 올린 게시글 댓글에 업로드 부탁합니다.
+크롬 개발자도구에서 아래 부분 찾아서 
+
+<video id="my-video_html5_api" class="vjs-tech" controlslist="nodownload" preload="none" data-setup="{}" tabindex="-1" role="application" src="blob:https://g2.myani.app/646aed07-b820-45e6-8d12-b0912829f0e6">
+<source src="https://m3k.myani.app/b2nss4/m3u8/401978n1.m3u8" type="application/x-mpegURL"></video>
